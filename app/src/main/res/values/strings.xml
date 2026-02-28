@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Kotlin</string>
+    <string name="title_activity_card">card</string>
+    <string name="title_activity_login">LoginActivity</string>
+    <string name="title_activity_profile">ProfileActivity</string>
+    <string name="title_activity_button">Button</string>
+    <string name="title_activity_spotify">Spotify</string>
+    <string name="title_activity_registration">Registration</string>
+    <string name="title_activity_dashboard">DashboardActivity</string>
+    <string name="title_activity_splash">SplashActivity</string>
+    <string name="title_activity_add_prodcut">AddProdcutActivity</string>
+    <string name="title_activity_add_product">AddProductActivity</string>
+    <string name="title_activity_add_restaurant">AddRestaurantActivity</string>
+    <string name="title_activity_user_dashboard">UserDashboardActivity</string>
+    <string name="title_activity_admin_booking">AdminBookingActivity</string>
+    <string name="title_activity_saved_resturants">SavedResturantsActivity</string>
+</resources>
