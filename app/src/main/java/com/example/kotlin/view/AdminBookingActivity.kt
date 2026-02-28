@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.example.kotlin.model.BookingModel
 import com.example.kotlin.repository.RestaurantRepoImpl
 import com.example.kotlin.ui.theme.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 
 class AdminBookingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,54 +40,85 @@ fun AdminBookingScreen() {
     val context = LocalContext.current
     var bookings by remember { mutableStateOf<List<BookingModel>>(emptyList()) }
 
+    // TAB STATE: 0 = Pending, 1 = Approved, 2 = Declined
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val tabs = listOf("Pending", "Approved", "Declined")
+
     LaunchedEffect(Unit) {
         repo.fetchAllBookings { list, success, _ ->
             if (success && list != null) { bookings = list }
         }
     }
 
-    // --- FILTER LOGIC ---
-    val pendingBookings = bookings.filter { it.status == "Pending" }
-    val historyBookings = bookings.filter { it.status != "Pending" }
+    // Filtered lists based on status
+    val filteredList = when (selectedTab) {
+        0 -> bookings.filter { it.status == "Pending" }
+        1 -> bookings.filter { it.status == "Approved" }
+        else -> bookings.filter { it.status == "Declined" }
+    }
 
     Column(modifier = Modifier.fillMaxSize().background(SoftBackground)) {
+        // --- HEADER ---
         Surface(color = PrimaryOrange, shadowElevation = 4.dp, modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.statusBarsPadding().padding(horizontal = 4.dp, vertical = 8.dp).fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { (context as ComponentActivity).finish() }) {
-                    Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back", tint = White)
+            Column {
+                Row(
+                    modifier = Modifier.statusBarsPadding().padding(horizontal = 4.dp, vertical = 8.dp).fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { (context as ComponentActivity).finish() }) {
+                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back", tint = White)
+                    }
+                    Text("Manage Requests", color = White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 }
-                Text("Booking Requests", color = White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+
+                // --- TABS (Like Job Portals) ---
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = PrimaryOrange,
+                    contentColor = White,
+                    indicator = { tabPositions ->
+                        TabRowDefaults.SecondaryIndicator(
+                            Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                            color = White
+                        )
+                    }
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            text = {
+                                Text(
+                                    text = title,
+                                    fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        )
+                    }
+                }
             }
         }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Section 1: Active Requests
-            if (pendingBookings.isNotEmpty()) {
-                item { Text("New Requests", fontWeight = FontWeight.Bold, color = PrimaryOrange) }
-                items(pendingBookings) { booking ->
+        // --- LIST VIEW ---
+        if (filteredList.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No ${tabs[selectedTab]} requests found", color = Color.Gray)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(filteredList) { booking ->
                     BookingApprovalCard(booking = booking) { status, tableNo ->
                         repo.updateBookingStatus(booking.bookingId, status, tableNo) { success, _ ->
                             if (success) {
                                 repo.fetchAllBookings { list, _, _ -> if (list != null) bookings = list }
+                                Toast.makeText(context, "Status updated to $status", Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
-                }
-            }
-
-            // Section 2: Processed History
-            if (historyBookings.isNotEmpty()) {
-                item { Spacer(modifier = Modifier.height(16.dp)) }
-                item { Text("History", fontWeight = FontWeight.Bold, color = Color.Gray) }
-                items(historyBookings) { booking ->
-                    BookingApprovalCard(booking = booking) { _, _ -> /* Actions locked */ }
                 }
             }
         }
@@ -105,9 +137,9 @@ fun BookingApprovalCard(booking: BookingModel, onAction: (String, String) -> Uni
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Restaurant: ${booking.restaurantName}", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = DarkGreyText)
-            Text("User: ${booking.userEmail}", color = Color.DarkGray, fontSize = 14.sp)
-            Text("Time: ${booking.date} | ${booking.time}", color = PrimaryOrange, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text("${booking.restaurantName}", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = DarkGreyText)
+            Text("From: ${booking.userEmail}", color = Color.DarkGray, fontSize = 14.sp)
+            Text("${booking.date} | ${booking.time}", color = PrimaryOrange, fontSize = 14.sp, fontWeight = FontWeight.Bold)
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 1.dp, color = SoftBackground)
 
@@ -115,7 +147,7 @@ fun BookingApprovalCard(booking: BookingModel, onAction: (String, String) -> Uni
                 OutlinedTextField(
                     value = tableInput,
                     onValueChange = { tableInput = it },
-                    label = { Text("Assign Table No.") },
+                    label = { Text("Assign Table (Optional)") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryOrange, focusedLabelColor = PrimaryOrange)
@@ -129,7 +161,7 @@ fun BookingApprovalCard(booking: BookingModel, onAction: (String, String) -> Uni
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(8.dp)
-                    ) { Text("Approve", color = White) }
+                    ) { Text("Approve") }
 
                     Spacer(modifier = Modifier.width(8.dp))
 
@@ -138,16 +170,22 @@ fun BookingApprovalCard(booking: BookingModel, onAction: (String, String) -> Uni
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(8.dp)
-                    ) { Text("Decline", color = White) }
+                    ) { Text("Decline") }
                 }
             } else {
-                Text(
-                    text = "Status: ${booking.status} ${if (booking.tableNo.isNotEmpty()) " (Table ${booking.tableNo})" else ""}",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = if (booking.status == "Approved") Color(0xFF4CAF50) else Color.Red
-                )
-                Text("Action completed and locked.", fontSize = 12.sp, color = Color.Gray)
+                // Status Badge for Approved/Declined
+                Surface(
+                    color = if (booking.status == "Approved") Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = "STATUS: ${booking.status} ${if (booking.tableNo.isNotEmpty()) " (Table ${booking.tableNo})" else ""}",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = if (booking.status == "Approved") Color(0xFF2E7D32) else Color.Red
+                    )
+                }
             }
         }
     }
