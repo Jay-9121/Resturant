@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag // Required import for testing
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,13 +29,19 @@ import com.example.kotlin.viewmodel.RestaurantViewModel
 class AddRestaurantActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { AddRestaurantBody() }
+        setContent {
+            KotlinTheme { // Wrapped in theme for consistency
+                AddRestaurantBody()
+            }
+        }
     }
 }
 
 @Composable
 fun AddRestaurantBody() {
     val context = LocalContext.current
+
+    // In a real app, use Hilt or factory, but keeping your logic for now
     val repo = remember { RestaurantRepoImpl() }
     val viewModel = remember { RestaurantViewModel(repo) }
 
@@ -44,16 +51,26 @@ fun AddRestaurantBody() {
     var deal by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.fillMaxSize().background(SoftBackground)) {
-        // Custom Header (No @OptIn)
+        // Custom Header
         Surface(color = PrimaryOrange, shadowElevation = 4.dp) {
             Row(
-                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 4.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 4.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { (context as ComponentActivity).finish() }) {
                     Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = White)
                 }
-                Text("Post New Restaurant", color = White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Text(
+                    text = "Post New Restaurant",
+                    color = White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    // MATCHES: testHeaderIsVisible
+                    modifier = Modifier.testTag("app_header")
+                )
             }
         }
 
@@ -63,29 +80,42 @@ fun AddRestaurantBody() {
         ) {
             item {
                 OutlinedTextField(
-                    value = name, onValueChange = { name = it },
-                    label = { Text("Restaurant Name") }, modifier = Modifier.fillMaxWidth(),
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Restaurant Name") },
+                    // MATCHES: testAddRestaurantFormFieldsVisible & testRestaurantNameInputTyping
+                    modifier = Modifier.fillMaxWidth().testTag("name_input"),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryOrange, focusedLabelColor = PrimaryOrange)
                 )
+
                 Spacer(modifier = Modifier.height(8.dp))
+
                 OutlinedTextField(
                     value = cuisine, onValueChange = { cuisine = it },
-                    label = { Text("Cuisine Type") }, modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Cuisine Type") },
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryOrange, focusedLabelColor = PrimaryOrange)
                 )
+
                 Spacer(modifier = Modifier.height(8.dp))
+
                 OutlinedTextField(
                     value = location, onValueChange = { location = it },
-                    label = { Text("Location") }, modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Location") },
+                    // MATCHES: testAddRestaurantFormFieldsVisible ("address_input")
+                    modifier = Modifier.fillMaxWidth().testTag("address_input"),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryOrange, focusedLabelColor = PrimaryOrange)
                 )
+
                 Spacer(modifier = Modifier.height(8.dp))
+
                 OutlinedTextField(
                     value = deal, onValueChange = { deal = it },
-                    label = { Text("Deals & Offers (Optional)") }, modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Deals & Offers (Optional)") },
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryOrange, focusedLabelColor = PrimaryOrange)
                 )
@@ -104,7 +134,11 @@ fun AddRestaurantBody() {
                             if (success) (context as ComponentActivity).finish()
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(55.dp),
+                    // MATCHES: testSaveButtonIsPresent
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(55.dp)
+                        .testTag("save_restaurant_button"),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange)
                 ) {
